@@ -1,0 +1,75 @@
+// Prepare the input image
+private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
+static {
+    ORIENTATIONS.append(Surface.ROTATION_0, 0);
+    ORIENTATIONS.append(Surface.ROTATION_90, 90);
+    ORIENTATIONS.append(Surface.ROTATION_180, 180);
+    ORIENTATIONS.append(Surface.ROTATION_270, 270);
+}
+
+/**
+ * Get the angle by which an image must be rotated given the device's current
+ * orientation.
+ */
+@RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+private int getRotationCompensation(String cameraId, Activity activity, boolean isFrontFacing)
+        throws CameraAccessException {
+    // Get the device's current rotation relative to its "native" orientation.
+    // Then, from the ORIENTATIONS table, look up the angle the image must be
+    // rotated to compensate for the device's rotation.
+    int deviceRotation = activity.getWindowManager().getDefaultDisplay().getRotation();
+    int rotationCompensation = ORIENTATIONS.get(deviceRotation);
+
+    // Get the device's sensor orientation.
+    CameraManager cameraManager = (CameraManager) activity.getSystemService(CAMERA_SERVICE);
+    int sensorOrientation = cameraManager
+            .getCameraCharacteristics(cameraId)
+            .get(CameraCharacteristics.SENSOR_ORIENTATION);
+
+    if (isFrontFacing) {
+        rotationCompensation = (sensorOrientation + rotationCompensation) % 360;
+    } else { // back-facing
+        rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360;
+    }
+    return rotationCompensation;
+}
+InputImage image = InputImage.fromMediaImage(mediaImage, rotation);
+
+// Get an instance of TextRecognizer
+TextRecognizer recognizer = TextRecognition.getClient();
+
+// Process The Image
+Task<Text> result =
+        recognizer.process(image)
+                .addOnSuccessListener(new OnSuccessListener<Text>() {
+                    @Override
+                    public void onSuccess(Text visionText) {
+                        // Task completed successfully
+                        // ...
+                    }
+                })
+                .addOnFailureListener(
+                        new OnFailureListener() {
+                            @Override
+                            public void onFailure(@NonNull Exception e) {
+                                // Task failed with an exception
+                                // ...
+                            }
+                        });
+// Extract text from blocks of recognized text
+String resultText = result.getText();
+for (Text.TextBlock block : result.getTextBlocks()) {
+    String blockText = block.getText();
+    Point[] blockCornerPoints = block.getCornerPoints();
+    Rect blockFrame = block.getBoundingBox();
+    for (Text.Line line : block.getLines()) {
+        String lineText = line.getText();
+        Point[] lineCornerPoints = line.getCornerPoints();
+        Rect lineFrame = line.getBoundingBox();
+        for (Text.Element element : line.getElements()) {
+            String elementText = element.getText();
+            Point[] elementCornerPoints = element.getCornerPoints();
+            Rect elementFrame = element.getBoundingBox();
+        }
+    }
+}
